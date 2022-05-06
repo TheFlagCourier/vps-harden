@@ -88,6 +88,7 @@ function setup_environment() {
 
 function check_distro() {
     # currently only for Ubuntu 16.04
+    # shellcheck source=/dev/null
     if [[ -r /etc/os-release ]]; then
         . /etc/os-release
         if [[ "${VERSION_ID}" != "16.04" ]] ; then
@@ -104,11 +105,13 @@ function check_distro() {
 function begin_log() {
     # Create Log File and Begin
     echo -e -n "${lightcyan}"
-    echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
-    echo -e " $(date +%m.%d.%Y_%H:%M:%S) : SCRIPT STARTED SUCCESSFULLY " | tee -a "$LOGFILE"
-    echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
-    echo -e "------- AKcryptoGUY's VPS Hardening Script --------- " | tee -a "$LOGFILE"
-    echo -e "---------------------------------------------------- \n" | tee -a "$LOGFILE"
+    {
+        echo -e "---------------------------------------------------- "
+        echo -e " $(date +%m.%d.%Y_%H:%M:%S) : SCRIPT STARTED SUCCESSFULLY "
+        echo -e "---------------------------------------------------- "
+        echo -e "------- AKcryptoGUY's VPS Hardening Script --------- "
+        echo -e "---------------------------------------------------- \n"
+    } | tee -a "$LOGFILE"
     echo -e -n "${nocolor}"
     sleep 2
 }
@@ -138,9 +141,10 @@ function create_swap() {
     else
         # set swap to twice the physical RAM but not less than 2GB
         PHYSRAM=$(grep MemTotal /proc/meminfo | awk '{print int($2 / 1024 / 1024 + 0.5)}')
-        let "SWAPSIZE=2*$PHYSRAM"
-        (($SWAPSIZE >= 1 && $SWAPSIZE >= 31)) && SWAPSIZE=31
-        (($SWAPSIZE <= 2)) && SWAPSIZE=2
+        SWAPSIZE=$((2*"$PHYSRAM"))
+    
+        ((SWAPSIZE >= 1 && SWAPSIZE >= 31)) && SWAPSIZE=31
+        ((SWAPSIZE <= 2)) && SWAPSIZE=2
 
         fallocate -l ${SWAPSIZE}G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && cp /etc/fstab /etc/fstab.bak && echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
         echo -e -n "${lightgreen}"
@@ -290,14 +294,16 @@ function crypto_packages() {
         echo -e -n "${nocolor}"
         add-apt-repository -yu ppa:bitcoin/bitcoin | tee -a "$LOGFILE"
         echo -e -n "${white}"
-        echo -e "---------------------------------------------------------------------- " | tee -a "$LOGFILE"
-        echo ' # apt-get -qqy -o=Dpkg::Use-Pty=0 -o=Acquire::ForceIPv4=true install ' | tee -a "$LOGFILE"
-        echo '   build-essential g++ protobuf-compiler libboost-all-dev autotools-dev ' | tee -a "$LOGFILE"
-        echo '   automake libcurl4-openssl-dev libboost-all-dev libssl-dev libdb++-dev ' | tee -a "$LOGFILE"
-        echo '   make autoconf automake libtool git apt-utils libprotobuf-dev pkg-config ' | tee -a "$LOGFILE"
-        echo '   libcurl3-dev libudev-dev libqrencode-dev bsdmainutils pkg-config libssl-dev ' | tee -a "$LOGFILE"
-        echo '   libgmp3-dev libevent-dev jp2a pv virtualenv lsb-release update-motd ' | tee -a "$LOGFILE"
-        echo -e "----------------------------------------------------------------------- " | tee -a "$LOGFILE"
+        {
+            echo -e "---------------------------------------------------------------------- "
+            echo ' # apt-get -qqy -o=Dpkg::Use-Pty=0 -o=Acquire::ForceIPv4=true install '
+            echo '   build-essential g++ protobuf-compiler libboost-all-dev autotools-dev '
+            echo '   automake libcurl4-openssl-dev libboost-all-dev libssl-dev libdb++-dev '
+            echo '   make autoconf automake libtool git apt-utils libprotobuf-dev pkg-config '
+            echo '   libcurl3-dev libudev-dev libqrencode-dev bsdmainutils pkg-config libssl-dev '
+            echo '   libgmp3-dev libevent-dev jp2a pv virtualenv lsb-release update-motd '
+            echo -e "----------------------------------------------------------------------- "
+        } | tee -a "$LOGFILE"
         echo -e -n "${lightred}"
         echo -e " This step can appear to hang for a minute or two so don't be alarmed "
         echo -e "---------------------------------------------------------------------- "
@@ -307,26 +313,32 @@ function crypto_packages() {
             automake libcurl4-openssl-dev libboost-all-dev libssl-dev libdb++-dev \
             make autoconf automake libtool git apt-utils libprotobuf-dev pkg-config \
             libcurl3-dev libudev-dev libqrencode-dev bsdmainutils pkg-config libssl-dev \
-            libgmp3-dev libevent-dev jp2a pv virtualenv lsb-release update-motd  | tee -a "$LOGFILE"
+            libgmp3-dev libevent-dev jp2a pv virtualenv lsb-release update-motd | tee -a "$LOGFILE"
 			
         # need more testing to see if autoremove breaks the script or not
         # apt autoremove -y | tee -a "$LOGFILE"
         clear
         echo -e -n "${lightgreen}"
-        echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
-        echo -e " $(date +%m.%d.%Y_%H:%M:%S) : CRYPTO INSTALLED SUCCESFULLY " | tee -a "$LOGFILE"
-        echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
+        {
+            echo -e "---------------------------------------------------- "
+            echo -e " $(date +%m.%d.%Y_%H:%M:%S) : CRYPTO INSTALLED SUCCESFULLY "
+            echo -e "---------------------------------------------------- "
+        } | tee -a "$LOGFILE"
         echo -e -n "${nocolor}"
     else 	echo -e -n "${yellow}"
         clear
-        echo  -e "----------------------------------------------------- " >> $LOGFILE 2>&1
-        echo  "    ** User chose not to install crypto packages **" >> $LOGFILE 2>&1
-        echo  -e "-----------------------------------------------------" >> $LOGFILE 2>&1
+        {
+            echo  -e "----------------------------------------------------- "
+            echo  "    ** User chose not to install crypto packages **"
+            echo  -e "-----------------------------------------------------"
+        } >> $LOGFILE 2>&1
     fi
     echo -e -n "${lightgreen}"
-    echo -e "----------------------------------------------------- " | tee -a "$LOGFILE"
-    echo -e " $(date +%m.%d.%Y_%H:%M:%S) : CRYPTO PACKAGE SETUP COMPLETE " | tee -a "$LOGFILE"
-    echo -e "----------------------------------------------------- " | tee -a "$LOGFILE"
+    {
+        echo -e "----------------------------------------------------- "
+        echo -e " $(date +%m.%d.%Y_%H:%M:%S) : CRYPTO PACKAGE SETUP COMPLETE "
+        echo -e "----------------------------------------------------- " 
+    } | tee -a "$LOGFILE"
     echo -e -n "${nocolor}"
 }
 
@@ -367,10 +379,10 @@ function add_user() {
         echo -e -n "${yellow}"
         echo -e " Great; let's set one up now... \n"
         echo -e -n "${cyan}"
-        read -p " Enter New Username: " UNAME
+        read -r -p " Enter New Username: " UNAME
         while [[ "$UNAME" =~ [^0-9A-Za-z]+ ]] || [ -z "$UNAME" ]; do echo -e "\n"
             echo -e -n "${lightred}"
-            read -p " --> Please enter a username that contains only letters or numbers: " UNAME
+            read -r -p " --> Please enter a username that contains only letters or numbers: " UNAME
             echo -e -n "${nocolor}"
         done
         echo -e "\n"
@@ -413,14 +425,18 @@ function add_user() {
         fi
     else 	echo -e -n "${yellow}"
         clear
-        echo  -e "----------------------------------------------------- " >> $LOGFILE 2>&1
-        echo  "    ** User chose not to create a new user **" >> $LOGFILE 2>&1
-        echo  -e "-----------------------------------------------------" >> $LOGFILE 2>&1
+        {
+            echo  -e "----------------------------------------------------- "
+            echo  "    ** User chose not to create a new user **"
+            echo  -e "-----------------------------------------------------"
+        } >> $LOGFILE 2>&1
     fi
     echo -e -n "${lightgreen}"
-    echo -e "---------------------------------------------- " | tee -a "$LOGFILE"
-    echo -e " $(date +%m.%d.%Y_%H:%M:%S) : USER SETUP IS COMPLETE " | tee -a "$LOGFILE"
-    echo -e "---------------------------------------------- " | tee -a "$LOGFILE"
+    {
+        echo -e "---------------------------------------------- "
+        echo -e " $(date +%m.%d.%Y_%H:%M:%S) : USER SETUP IS COMPLETE "
+        echo -e "---------------------------------------------- "
+    } | tee -a "$LOGFILE"
     echo -e -n "${nocolor}"
 }
 
@@ -447,15 +463,19 @@ function collect_sshd() {
     echo -e " use a different port, you gain some security through obscurity.\n"
     while :; do
         echo -e -n "${cyan}"
-        read -p " Enter a custom port for SSH between 11000 and 65535 or use 22: " SSHPORT
+        read -r -p " Enter a custom port for SSH between 11000 and 65535 or use 22: " SSHPORT
         [[ $SSHPORT =~ ^[0-9]+$ ]] || { echo -e -n "${lightred}";echo -e " --> Try harder, that's not even a number. \n";echo -e -n "${nocolor}";continue; }
-        if (($SSHPORT >= 11000 && $SSHPORT <= 65535)); then break
+        if ((SSHPORT >= 11000 && SSHPORT <= 65535)); then break
         elif [ "$SSHPORT" = 22 ]; then break
-        else echo -e -n "${lightred}"
+        else 
+            echo -e -n "${lightred}"
             echo -e " --> That number is out of range, try again. \n"
-            echo "---------------------------------------------------- " >> $LOGFILE 2>&1
-            echo " $(date +%m.%d.%Y_%H:%M:%S) : ERROR: User entered: $SSHPORT " >> $LOGFILE 2>&1
-            echo "---------------------------------------------------- " >> $LOGFILE 2>&1
+            {
+                echo "---------------------------------------------------- "
+                echo " $(date +%m.%d.%Y_%H:%M:%S) : ERROR: User entered: $SSHPORT "
+                echo "---------------------------------------------------- "
+            } >> $LOGFILE 2>&1
+            
             echo -e -n "${nocolor}"
         fi
     done
@@ -566,9 +586,11 @@ function prompt_rootlogin {
         echo " Since you chose not to create a non-root user, "
         echo " I did not disable root login for obvious reasons."
         echo -e "---------------------------------------------------- \n"
-        echo -e "----------------------------------------------------- " >> $LOGFILE 2>&1
-        echo -e " Root login not changed; no non-root user was created " >> $LOGFILE 2>&1
-        echo -e "----------------------------------------------------- \n" >> $LOGFILE 2>&1
+        {
+            echo -e "----------------------------------------------------- "
+            echo -e " Root login not changed; no non-root user was created "
+            echo -e "----------------------------------------------------- \n"
+        } >> $LOGFILE 2>&1
         echo -e -n "${nocolor}"
     fi
     clear
@@ -595,7 +617,7 @@ function disable_passauth() {
     echo -e " and use that to login, you should disable password authentication.\n"
     echo -e "${nocolor}"
     PASSWDAUTH=$(sed -n -e '/.*PasswordAuthentication /p' $SSHDFILE)
-    if [ -n "/root/.ssh/authorized_keys" ]
+    if [ -f "/root/.ssh/authorized_keys" ]
     then
         # PASSWDAUTH=$(sed -n -e '/PasswordAuthentication /p' $SSHDFILE)
         #       if [ -z "${PASSWDAUTH}" ]
@@ -610,10 +632,14 @@ function disable_passauth() {
         echo -e "             ** $PASSWDAUTH ** " | tee -a "$LOGFILE"
         echo -e "     --------------------------------------------------- \n"
         # output to log
-        echo -e "--------------------------------------------------- " >> $LOGFILE 2>&1
-        echo -e " Your current password authentication settings are   " >> $LOGFILE 2>&1
-        echo -e "      ** $PASSWDAUTH ** " >> $LOGFILE 2>&1
-        echo -e "--------------------------------------------------- " >> $LOGFILE 2>&1
+        {
+            echo -e "--------------------------------------------------- "
+            echo -e " Your current password authentication settings are   "
+            echo -e "      ** $PASSWDAUTH ** "
+            echo -e "--------------------------------------------------- "
+        } >> $LOGFILE 2>&1
+
+        
         
         echo -e -n "${cyan}"
             while :; do
@@ -629,35 +655,47 @@ function disable_passauth() {
         # check if PASSLOGIN is valid
         if [ "${PASSLOGIN,,}" = "Y" ] || [ "${PASSLOGIN,,}" = "y" ]
         then
-            sed -i "s/PasswordAuthentication .*/PasswordAuthentication no/" $SSHDFILE >> $LOGFILE
-            sed -i "s/#PasswordAuthentication .*/PasswordAuthentication no/" $SSHDFILE >> $LOGFILE
-            sed -i "s/# PasswordAuthentication .*/PasswordAuthentication no/" $SSHDFILE >> $LOGFILE
+            {
+                sed -i "s/PasswordAuthentication .*/PasswordAuthentication no/" $SSHDFILE
+                sed -i "s/#PasswordAuthentication .*/PasswordAuthentication no/" $SSHDFILE
+                sed -i "s/# PasswordAuthentication .*/PasswordAuthentication no/" $SSHDFILE
+            } >> $LOGFILE
+            
 
             # Error Handling
             if [ $? -eq 0 ]
             then
                 echo -e -n "${lightgreen}"
-                echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
-                echo " $(date +%m.%d.%Y_%H:%M:%S) : SUCCESS : PassAuth set to NO " | tee -a "$LOGFILE"
-                echo -e "---------------------------------------------------- \n" | tee -a "$LOGFILE"
+                {
+                    echo -e "---------------------------------------------------- "
+                    echo " $(date +%m.%d.%Y_%H:%M:%S) : SUCCESS : PassAuth set to NO "
+                    echo -e "---------------------------------------------------- \n"
+                } | tee -a "$LOGFILE"
                 echo -e -n "${nocolor}"
             else
                 echo -e -n "${lightred}"
-                echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
-                echo " $(date +%m.%d.%Y_%H:%M:%S) : ERROR: PasswordAuthentication couldn't be changed to no : " | tee -a "$LOGFILE"
-                echo -e "---------------------------------------------------- \n" | tee -a "$LOGFILE"
+                {
+                    echo -e "---------------------------------------------------- "
+                    echo " $(date +%m.%d.%Y_%H:%M:%S) : ERROR: PasswordAuthentication couldn't be changed to no : "
+                    echo -e "---------------------------------------------------- \n"
+                } | tee -a "$LOGFILE"
                 echo -e -n "${nocolor}"
             fi
         else
-            sed -i "s/PasswordAuthentication .*/PasswordAuthentication yes/" $SSHDFILE >> $LOGFILE
-            sed -i "s/#PasswordAuthentication .*/PasswordAuthentication yes/" $SSHDFILE >> $LOGFILE
-            sed -i "s/# PasswordAuthentication .*/PasswordAuthentication yes/" $SSHDFILE >> $LOGFILE
+            {
+                sed -i "s/PasswordAuthentication .*/PasswordAuthentication yes/" $SSHDFILE
+                sed -i "s/#PasswordAuthentication .*/PasswordAuthentication yes/" $SSHDFILE
+                sed -i "s/# PasswordAuthentication .*/PasswordAuthentication yes/" $SSHDFILE
+            } >> $LOGFILE
         fi
     else
         echo -e -n "${yellow}"
-        echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
-        echo -e " With no RSA key; I can't disable PasswordAuthentication." | tee -a "$LOGFILE"
-        echo -e "---------------------------------------------------- \n" | tee -a "$LOGFILE"
+        {
+            echo -e "---------------------------------------------------- "
+            echo -e " With no RSA key; I can't disable PasswordAuthentication."
+            echo -e "---------------------------------------------------- \n"
+        } | tee -a "$LOGFILE"
+        
         echo -e -n "${nocolor}"
     fi
     PASSWDAUTH=$(sed -n -e '/PasswordAuthentication /p' $SSHDFILE)
@@ -822,6 +860,7 @@ function server_hardening() {
         echo -e "---------------------------------------------------- \n " | tee -a "$LOGFILE"
         sleep 2	; #  dramatic pause
 
+        # shellcheck source=/dev/null
         . /etc/os-release
         if [[ "${VERSION_ID}" = "16.04" ]] 
         then cat etc/apt/apt.conf.d/10periodic > /etc/apt/apt.conf.d/10periodic
@@ -955,6 +994,7 @@ function google_auth() {
 function ksplice_install() {
 
     # This KSplice install script only works for Ubuntu 16.04 at the moment
+    # shellcheck source=/dev/null
     if [[ -r /etc/os-release ]]; then
         . /etc/os-release
         if [[ "${VERSION_ID}" != "16.04" ]] ; then
@@ -1203,7 +1243,7 @@ function restart_sshd() {
         fi
 
     else echo -e "\n"
-        printf "$yellow"
+        printf '%s' "$yellow"
         echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
         echo -e " *** User elected not to restart SSH at this time *** " | tee -a "$LOGFILE"
         echo -e "---------------------------------------------------- " | tee -a "$LOGFILE"
